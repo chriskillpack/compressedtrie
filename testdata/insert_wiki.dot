@@ -1,0 +1,30 @@
+digraph Trie {
+  node [shape=circle];
+  n0 [label="(false)"];
+  n1 [label="(false)"];
+  n0 -> n1 [label="r"];
+  n2 [label="(false)"];
+  n1 -> n2 [label="om"];
+  n3 [label="(false)"];
+  n2 -> n3 [label="an"];
+  n4 [label="(true)"];
+  n3 -> n4 [label="e"];
+  n5 [label="(true)"];
+  n3 -> n5 [label="us"];
+  n6 [label="(true)"];
+  n2 -> n6 [label="ulus"];
+  n7 [label="(false)"];
+  n1 -> n7 [label="ub"];
+  n8 [label="(false)"];
+  n7 -> n8 [label="e"];
+  n9 [label="(true)"];
+  n8 -> n9 [label="ns"];
+  n10 [label="(true)"];
+  n8 -> n10 [label="r"];
+  n11 [label="(false)"];
+  n7 -> n11 [label="ic"];
+  n12 [label="(true)"];
+  n11 -> n12 [label="on"];
+  n13 [label="(true)"];
+  n11 -> n13 [label="undus"];
+}
