@@ -53,6 +53,36 @@ func TestInsertWord(t *testing.T) {
 	}
 }
 
+func TestFindWordsWithPrefix(t *testing.T) {
+	cases := []struct {
+		Name     string
+		Words    []string
+		Prefix   string
+		Expected []string
+	}{
+		{"Exact match", []string{"test", "toaster", "toasting"}, "test", []string{"test"}},
+		{"Matching prefix", []string{"test", "toaster", "toasting"}, "to", []string{"toaster", "toasting"}},
+		{"No match", []string{"test", "toaster", "toasting"}, "a", []string{}},
+		{"Prefix too long", []string{"test", "toaster", "toasting"}, "toastinger", []string{}},
+		{"Everything", []string{"test", "toaster", "toasting"}, "", []string{"test", "toaster", "toasting"}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.Name, func(t *testing.T) {
+			tree := NewTree()
+
+			for _, word := range tc.Words {
+				tree.Insert(word)
+			}
+
+			actual := tree.FindWordsWithPrefix(tc.Prefix)
+			if !slices.Equal(actual, tc.Expected) {
+				t.Errorf("Returned words don't match. Expected: %v\nActual: %v\n", tc.Expected, actual)
+			}
+		})
+	}
+}
+
 // Generate a DOT file for this tree
 func asDot(tree *Tree) string {
 	var sb strings.Builder
@@ -75,7 +105,7 @@ func asDot(tree *Tree) string {
 		sb.WriteString(fmt.Sprintf("  n%d [label=\"%s\"];\n", nodeID, label))
 
 		if parentID >= 0 {
-			sb.WriteString(fmt.Sprintf("  n%d -> n%d [label=\"%s\"];\n", parentID, nodeID, node.prefix))
+			sb.WriteString(fmt.Sprintf("  n%d -> n%d [label=\"%s\"];\n", parentID, nodeID, node.label))
 		}
 
 		for _, k := range slices.Sorted(maps.Keys(node.children)) {
