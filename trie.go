@@ -28,9 +28,18 @@ package compressedtrie
 // characters sequentially in memory.
 
 import (
+	"bufio"
+	"encoding/binary"
+	"errors"
+	"io"
 	"maps"
 	"slices"
 	"strings"
+)
+
+var (
+	ErrUnsupportedVersion = errors.New("unsupported version of the file format")
+	ErrInvalidFormat      = errors.New("invalid file format")
 )
 
 type Node struct {
@@ -40,11 +49,20 @@ type Node struct {
 }
 
 type Tree struct {
-	root *Node
+	root  *Node
+	nodes int
 }
 
+type SerializedTreeHeader struct {
+	Magic   uint32
+	Version uint32
+	Nodes   uint32
+}
+
+const ctreeMagic uint32 = 'C'<<24 | 'T'<<16 | 'R'<<8 | 'E'
+
 func NewTree() *Tree {
-	return &Tree{root: &Node{children: make(map[byte]*Node)}}
+	return &Tree{root: &Node{children: make(map[byte]*Node)}, nodes: 1}
 }
 
 func (t *Tree) Insert(word string) {
@@ -71,6 +89,7 @@ func (t *Tree) Insert(word string) {
 				label:    word,
 				isWord:   true,
 			}
+			t.nodes++
 
 			return
 		}
@@ -106,6 +125,7 @@ func (t *Tree) Insert(word string) {
 			children: make(map[byte]*Node),
 			isWord:   remainder == "",
 		}
+		t.nodes++
 		newNode.children[remainder[0]] = child
 		child.label = remainder
 
@@ -154,6 +174,53 @@ func (t *Tree) FindWordsWithPrefix(prefix string) []string {
 	}
 }
 
+// Serialize a tree into an io.Writer
+func (t *Tree) Serialize(w io.Writer) error {
+	if int(uint32(t.nodes)) != t.nodes {
+		panic("node count exceeds file format")
+	}
+
+	buf := bufio.NewWriter(w)
+	hdr := SerializedTreeHeader{
+		Magic:   ctreeMagic,
+		Version: 1,
+		Nodes:   uint32(t.nodes),
+	}
+	if err := binary.Write(buf, binary.BigEndian, hdr); err != nil {
+		return err
+	}
+
+	t.serializeNode(t.root, buf)
+	return buf.Flush()
+}
+
+// DeserializeTree from a io.Reader, returns a Tree instance. Will return
+// ErrUnsupportedVersion if the serialize format is an unsupported version,
+// ErrInvalidFormat if the file is unrecognized.
+func DeserializeTree(r io.Reader) (*Tree, error) {
+	tree := NewTree()
+
+	buf := bufio.NewReader(r)
+
+	// Read the header in
+	hdr := SerializedTreeHeader{}
+	if err := binary.Read(buf, binary.BigEndian, &hdr); err != nil {
+		return nil, err
+	}
+	if hdr.Magic != ctreeMagic {
+		return nil, ErrInvalidFormat
+	}
+	if hdr.Version != 1 {
+		return nil, ErrUnsupportedVersion
+	}
+
+	if err := deserializeNode(tree.root, buf); err != nil {
+		return nil, err
+	}
+
+	return tree, nil
+}
+
 func (t *Tree) gatherWords(node *Node, currentPath string, words *[]string) {
 	// If this node marks a word then add it
 	if node.isWord {
@@ -165,4 +232,108 @@ func (t *Tree) gatherWords(node *Node, currentPath string, words *[]string) {
 		child := node.children[k]
 		t.gatherWords(child, currentPath+child.label, words)
 	}
+}
+
+func (t *Tree) serializeNode(node *Node, buf *bufio.Writer) error {
+	// Each node starts with the node label (u16 length, bytes of label string)
+	if _, err := buf.Write(serializeString(node.label)); err != nil {
+		return err
+	}
+
+	// Followed by u8 for isWord and then u8 for the number of children the node has
+	var err error
+	switch node.isWord {
+	case false:
+		err = buf.WriteByte(0)
+	case true:
+		err = buf.WriteByte(1)
+	}
+	if err != nil {
+		return err
+	}
+	if err := buf.WriteByte(byte(len(node.children))); err != nil {
+		return err
+	}
+
+	// Then we iterate over the keys in the node, write out the child key
+	// and then recurse into the child.
+	for _, k := range slices.Sorted(maps.Keys(node.children)) {
+		if err := buf.WriteByte(k); err != nil {
+			return err
+		}
+		if err := t.serializeNode(node.children[k], buf); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func deserializeNode(node *Node, buf *bufio.Reader) error {
+	var (
+		err       error
+		ncb, w, k byte
+	)
+
+	node.label, err = deserializeString(buf)
+	if err != nil {
+		return err
+	}
+
+	if w, err = buf.ReadByte(); err != nil {
+		return err
+	}
+	node.isWord = w == 1
+
+	if ncb, err = buf.ReadByte(); err != nil {
+		return err
+	}
+	node.children = make(map[byte]*Node, int(ncb))
+	for range int(ncb) {
+		// Read key
+		if k, err = buf.ReadByte(); err != nil {
+			return err
+		}
+		node.children[k] = &Node{}
+		if err = deserializeNode(node.children[k], buf); err != nil {
+			return err
+		}
+
+	}
+	return err
+}
+
+func serializeString(s string) []byte {
+	ls := uint16(len(s))
+	if int(ls) != len(s) {
+		panic("string length exceeds file format")
+	}
+
+	out := make([]byte, 2+len(s))
+	binary.BigEndian.PutUint16(out, ls)
+	copy(out[2:], s)
+
+	return out
+}
+
+func deserializeString(r io.Reader) (string, error) {
+	// Read the length of the string
+	var blen [2]byte
+	if n, err := r.Read(blen[:]); n != 2 || err != nil {
+		if n != 2 {
+			err = io.ErrUnexpectedEOF
+		}
+		return "", err
+	}
+
+	slen := int(binary.BigEndian.Uint16(blen[:]))
+	scratch := make([]byte, slen)
+	if n, err := r.Read(scratch); n != slen || err != nil {
+		if n != slen {
+			err = io.ErrUnexpectedEOF
+		}
+		return "", err
+	}
+
+	return string(scratch), nil
 }

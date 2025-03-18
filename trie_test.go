@@ -3,6 +3,7 @@ package compressedtrie
 // Online dot file viewer https://dreampuf.github.io/GraphvizOnline/?engine=dot#digraph%20G%20%7B%0A%0A%7D
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"maps"
@@ -80,6 +81,60 @@ func TestFindWordsWithPrefix(t *testing.T) {
 				t.Errorf("Returned words don't match. Expected: %v\nActual: %v\n", tc.Expected, actual)
 			}
 		})
+	}
+}
+
+func TestSerialize(t *testing.T) {
+	words := []string{"alphabet", "elephant", "alpha"}
+	tree := NewTree()
+	for _, word := range words {
+		tree.Insert(word)
+	}
+
+	buf := &bytes.Buffer{}
+	if err := tree.Serialize(buf); err != nil {
+		t.Fatal(err)
+	}
+	const filename = "testdata/serialize.ctree"
+	if *update {
+		// Write the serialized tree to disk
+		if err := os.WriteFile(filename, buf.Bytes(), 0666); err != nil {
+			t.Fatal(err)
+		}
+		// Write the serialized tree as a dot file
+		if err := os.WriteFile("testdata/serialize.dot", []byte(asDot(tree)), 0666); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
+
+	expected, err := os.ReadFile(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(buf.Bytes(), expected) {
+		t.Errorf("Actual serialized tree does not match expected")
+	}
+}
+
+func TestDeserialize(t *testing.T) {
+	f, err := os.Open("testdata/serialize.ctree")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	tree, err := DeserializeTree(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	actual := asDot(tree)
+	expected, err := os.ReadFile("testdata/serialize.dot")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if actual != string(expected) {
+		t.Errorf("Differing output\nActual=%q\nExpected=%q\n", actual, expected)
 	}
 }
 

@@ -1,0 +1,10 @@
+digraph Trie {
+  node [shape=circle];
+  n0 [label="(false)"];
+  n1 [label="(true)"];
+  n0 -> n1 [label="alpha"];
+  n2 [label="(true)"];
+  n1 -> n2 [label="bet"];
+  n3 [label="(true)"];
+  n0 -> n3 [label="elephant"];
+}
