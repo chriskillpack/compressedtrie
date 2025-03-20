@@ -319,19 +319,14 @@ func serializeString(s string) []byte {
 func deserializeString(r io.Reader) (string, error) {
 	// Read the length of the string
 	var blen [2]byte
-	if n, err := r.Read(blen[:]); n != 2 || err != nil {
-		if n != 2 {
-			err = io.ErrUnexpectedEOF
-		}
+	if _, err := io.ReadFull(r, blen[:]); err != nil {
 		return "", err
 	}
 
 	slen := int(binary.BigEndian.Uint16(blen[:]))
 	scratch := make([]byte, slen)
-	if n, err := r.Read(scratch); n != slen || err != nil {
-		if n != slen {
-			err = io.ErrUnexpectedEOF
-		}
+
+	if _, err := io.ReadFull(r, scratch); err != nil {
 		return "", err
 	}
 
