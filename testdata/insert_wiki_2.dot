@@ -1,18 +1,18 @@
 digraph Trie {
   node [shape=circle];
-  n0 [label="(false)"];
-  n1 [label="(true)"];
+  n0 [label=""];
+  n1 [label="", shape=doublecircle];
   n0 -> n1 [label="slow"];
-  n2 [label="(true)"];
+  n2 [label="", shape=doublecircle];
   n1 -> n2 [label="ly"];
-  n3 [label="(false)"];
+  n3 [label=""];
   n0 -> n3 [label="t"];
-  n4 [label="(true)"];
+  n4 [label="", shape=doublecircle];
   n3 -> n4 [label="est"];
-  n5 [label="(false)"];
+  n5 [label=""];
   n3 -> n5 [label="oast"];
-  n6 [label="(true)"];
+  n6 [label="", shape=doublecircle];
   n5 -> n6 [label="er"];
-  n7 [label="(true)"];
+  n7 [label="", shape=doublecircle];
   n5 -> n7 [label="ing"];
 }

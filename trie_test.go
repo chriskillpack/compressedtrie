@@ -156,8 +156,11 @@ func asDot(tree *Tree) string {
 		}
 
 		// Label with prefix and isWord status
-		label := fmt.Sprintf("(%t)", node.isWord)
-		sb.WriteString(fmt.Sprintf("  n%d [label=\"%s\"];\n", nodeID, label))
+		label := " [label=\"\"]"
+		if node.isWord {
+			label = " [label=\"\", shape=doublecircle]"
+		}
+		sb.WriteString(fmt.Sprintf("  n%d%s;\n", nodeID, label))
 
 		if parentID >= 0 {
 			sb.WriteString(fmt.Sprintf("  n%d -> n%d [label=\"%s\"];\n", parentID, nodeID, node.label))
