@@ -2,6 +2,13 @@
 
 A compressed trie (or radix tree) is a more space efficient form of a trie that retains the fast word and prefix lookup. It has the same big-O performance as a trie but in practice is faster because it uses fewer nodes and stores data in more cache-efficient ways.
 
+Don't just take my word for it, here are some images. Side by side below are the compressed trie (left) and traditional trie (right) representations of the words romane, romanus, romulus, rubens, ruber, rubicon and rubicundus. A double circle represents the end of a word. Note that the compressed trie has 14 nodes, while the more traditional trie has 28. The longest path in the compressed trie is 4 and 10 in the traditional.
+
+<p float="left">
+  <img src="images/compressed_trie.png" width="45%" style="vertical-align: top;" />
+  <img src="images/traditional_trie.png" width="45%" style="vertical-align: top;" />
+</p>
+
 ## How to use
 
 Currently the tree only supports the minimal set of features I needed, `Insert()`, `FindWordsWithPrefix()`, `Serialize` and `Deserialize`.
@@ -46,4 +53,3 @@ Some of the tests use test files, which can be updated. Don't forget to check th
 ```
 go test . -update
 ```
-
