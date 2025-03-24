@@ -147,6 +147,6 @@ func TestPerf(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Logf("file %s has %d nodes", filepath, ctree.nodes)
+		t.Logf("file %s has %d nodes", filepath, ctree.N)
 	}
 }

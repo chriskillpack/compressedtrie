@@ -1,3 +1,10 @@
+// Package compressedtrie implements a compressed Trie which provides the same
+// functionality as a traditional Trie but using fewer nodes and less memory.
+// Currently it only supports strings.
+//
+// A compressed Trie, aka a radix tree, achieves compression by storing shared
+// prefixes (called labels) on the edges between letters or portions of words.
+
 package compressedtrie
 
 // A compressed Trie (CTrie) is a Trie variant that uses fewer nodes and memory.
@@ -49,22 +56,29 @@ type Node struct {
 }
 
 type Tree struct {
-	root  *Node
-	nodes int
+	root *Node
+	N    int // The number of nodes in the tree
 }
 
 type SerializedTreeHeader struct {
-	Magic   uint32
-	Version uint32
-	Nodes   uint32
+	Magic   uint32 // magic number (CtreeMagic)
+	Version uint32 // file format version
+	Nodes   uint32 // number of nodes in the tree
 }
 
-const ctreeMagic uint32 = 'C'<<24 | 'T'<<16 | 'R'<<8 | 'E'
+const (
+	// 32-bit magic number for the serialized tree binary format
+	CtreeMagic uint32 = 'C'<<24 | 'T'<<16 | 'R'<<8 | 'E'
+	// File format version
+	Version uint32 = 1
+)
 
+// NewTree creates an empty instance of Tree, ready for word insertion.
 func NewTree() *Tree {
-	return &Tree{root: &Node{children: make(map[byte]*Node)}, nodes: 1}
+	return &Tree{root: &Node{children: make(map[byte]*Node)}, N: 1}
 }
 
+// Insert adds a word into t.
 func (t *Tree) Insert(word string) {
 	cur := t.root
 
@@ -89,7 +103,7 @@ func (t *Tree) Insert(word string) {
 				label:    word,
 				isWord:   true,
 			}
-			t.nodes++
+			t.N++
 
 			return
 		}
@@ -125,7 +139,7 @@ func (t *Tree) Insert(word string) {
 			children: make(map[byte]*Node),
 			isWord:   remainder == "",
 		}
-		t.nodes++
+		t.N++
 		newNode.children[remainder[0]] = child
 		child.label = remainder
 
@@ -133,6 +147,7 @@ func (t *Tree) Insert(word string) {
 	}
 }
 
+// FindWordsWithPrefix returns all the words in the tree that start with prefix.
 func (t *Tree) FindWordsWithPrefix(prefix string) []string {
 	var words []string
 
@@ -174,17 +189,17 @@ func (t *Tree) FindWordsWithPrefix(prefix string) []string {
 	}
 }
 
-// Serialize a tree into an io.Writer
+// Serialize a tree into an io.Writer. The serialized format is binary.
 func (t *Tree) Serialize(w io.Writer) error {
-	if int(uint32(t.nodes)) != t.nodes {
+	if int(uint32(t.N)) != t.N {
 		panic("node count exceeds file format")
 	}
 
 	buf := bufio.NewWriter(w)
 	hdr := SerializedTreeHeader{
-		Magic:   ctreeMagic,
-		Version: 1,
-		Nodes:   uint32(t.nodes),
+		Magic:   CtreeMagic,
+		Version: Version,
+		Nodes:   uint32(t.N),
 	}
 	if err := binary.Write(buf, binary.BigEndian, hdr); err != nil {
 		return err
@@ -194,9 +209,9 @@ func (t *Tree) Serialize(w io.Writer) error {
 	return buf.Flush()
 }
 
-// DeserializeTree from a io.Reader, returns a Tree instance. Will return
-// ErrUnsupportedVersion if the serialize format is an unsupported version,
-// ErrInvalidFormat if the file is unrecognized.
+// DeserializeTree returns a *Tree from an io.Reader. Returns ErrUnsupportedVersion
+// if the serialize format is an unsupported version, ErrInvalidFormat if the
+// file is unrecognized.
 func DeserializeTree(r io.Reader) (*Tree, error) {
 	tree := NewTree()
 
@@ -207,10 +222,10 @@ func DeserializeTree(r io.Reader) (*Tree, error) {
 	if err := binary.Read(buf, binary.BigEndian, &hdr); err != nil {
 		return nil, err
 	}
-	if hdr.Magic != ctreeMagic {
+	if hdr.Magic != CtreeMagic {
 		return nil, ErrInvalidFormat
 	}
-	if hdr.Version != 1 {
+	if hdr.Version != Version {
 		return nil, ErrUnsupportedVersion
 	}
 
