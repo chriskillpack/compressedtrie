@@ -6,10 +6,9 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"maps"
 	"os"
+	"path"
 	"slices"
-	"strings"
 	"testing"
 )
 
@@ -138,40 +137,16 @@ func TestDeserialize(t *testing.T) {
 	}
 }
 
-// Generate a DOT file for this tree
-func asDot(tree *Tree) string {
-	var sb strings.Builder
-	sb.WriteString("digraph Trie {\n")
-	sb.WriteString("  node [shape=circle];\n")
+func TestPerf(t *testing.T) {
+	t.Skip("Disabled") // For performance measurements
 
-	nodeCounter := 0
-	nodeIDs := make(map[*Node]int)
-	var traverse func(node *Node, parentID int)
-	traverse = func(node *Node, parentID int) {
-		nodeID, exists := nodeIDs[node]
-		if !exists {
-			nodeID = nodeCounter
-			nodeIDs[node] = nodeCounter
-			nodeCounter++
+	file_suffixes := []string{"10", "100", "200", "500", "1000", "5000", "10000", "20000", "50000", "100000", "all"}
+	for _, suffix := range file_suffixes {
+		filepath := path.Join("perf", fmt.Sprintf("words_%s.sid", suffix))
+		ctree, err := treeFromSID(filepath)
+		if err != nil {
+			t.Fatal(err)
 		}
-
-		// Label with prefix and isWord status
-		label := " [label=\"\"]"
-		if node.isWord {
-			label = " [label=\"\", shape=doublecircle]"
-		}
-		sb.WriteString(fmt.Sprintf("  n%d%s;\n", nodeID, label))
-
-		if parentID >= 0 {
-			sb.WriteString(fmt.Sprintf("  n%d -> n%d [label=\"%s\"];\n", parentID, nodeID, node.label))
-		}
-
-		for _, k := range slices.Sorted(maps.Keys(node.children)) {
-			traverse(node.children[k], nodeID)
-		}
+		t.Logf("file %s has %d nodes", filepath, ctree.nodes)
 	}
-	traverse(tree.root, -1)
-
-	sb.WriteString("}\n")
-	return sb.String()
 }
