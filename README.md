@@ -9,9 +9,25 @@ Don't just take my word for it, here are some images. Side by side below are the
   <img src="images/traditional_trie.png" width="45%" style="vertical-align: top;" />
 </p>
 
+Some real world node counts
+
+| Num words | Trie Nodes | Compressed Trie Nodes |
+| --------- | ---------- | --------------------- |
+|    270    |     1063   |         377           |
+|   2378    |     7540   |        3088           |
+|   3447    |    10518   |        4439           |
+|   5998    |    17695   |        7762           |
+|   7740    |    22680   |        9743           |
+|   21448   |    57955   |       25876           |
+|   39182   |   101508   |       46123           |
+|   87871   |   290779   |      102677           |
+|  117093   |   368683   |      136145           |
+|  260815   |  1333420   |      313641           |
+|  595111   |  3182208   |      707806           |
+
 ## How to use
 
-Currently the tree only supports the minimal set of features I needed, `Insert()`, `FindWordsWithPrefix()`, `Serialize` and `Deserialize`.
+Currently the tree only supports the minimal set of features I needed, `Insert()`, `FindWordsWithPrefix()`, `Serialize()` and `Deserialize()`.
 
 ```go
     tree := compressedtrie.NewTree()
@@ -24,23 +40,23 @@ Currently the tree only supports the minimal set of features I needed, `Insert()
     tree.FindWordsByPrefix("t") // returns []string{"test", "toaster", "toasting"}
 ```
 
-Serialization and deserialization allows for offline tree building
+The (de-)serialization methods enable offline tree building
 
 ```go
     # In your offline builder
     f, err := os.Create("prefixes.ctrie")
-    defer f.Close()
     tree.Serialize(f)
+    f.Close()
 ```
 
 ```go
     # In your runtime
     f, err := os.Open("prefixes.ctrie")
     tree := compressedtrie.Deserialize(f)
-    defer f.Close()
+    f.Close()
 ```
 
-Internally the Serialize and Deserialize routines use buffered I/O to minimize memory overhead while laying out the file.
+Internally `Serialize()` and `Deserialize()` use buffered I/O to minimize memory overhead while laying out the file.
 
 ## Tests
 
