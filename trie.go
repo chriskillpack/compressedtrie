@@ -229,6 +229,8 @@ func DeserializeTree(r io.Reader) (*Tree, error) {
 		return nil, ErrUnsupportedVersion
 	}
 
+	tree.N = int(hdr.Nodes)
+
 	if err := deserializeNode(tree.root, buf); err != nil {
 		return nil, err
 	}

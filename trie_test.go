@@ -127,6 +127,11 @@ func TestDeserialize(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	if expected, actual := 4, tree.N; expected != actual {
+		t.Errorf("Expected tree to have %d nodes, got %d", expected, actual)
+	}
+
 	actual := asDot(tree)
 	expected, err := os.ReadFile("testdata/serialize.dot")
 	if err != nil {
